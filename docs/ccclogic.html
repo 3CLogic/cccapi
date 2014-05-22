@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>ccclogic.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>ccclogic.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <pre><code>ccclogic.js <span class="hljs-number">0.0</span><span class="hljs-number">.1</span>
+http:<span class="hljs-comment">//www.3clogic.com</span>
+(c) <span class="hljs-number">2014</span>-<span class="hljs-number">2020</span> <span class="hljs-number">3</span>CLogic Inc., Pradeep Mishra (pmishra@<span class="hljs-number">3</span>clogic.com), Nitin Gupta (ngupta@<span class="hljs-number">3</span>clogic.com)
+ccclogic CTI adaptor can be freely distributed under the MIT license
+</code></pre>
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(window, $)</span>{</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <h2 id="-baseline-setup"> Baseline setup</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p> Discovery URL context to search the running instances</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> DISCOVERY_CONTEXT = <span class="hljs-string">"/ccclogic/api/discovery/instances"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p> URL context to get agent configuration</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        AGENT_CONTEXT = <span class="hljs-string">"agent"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p> URL context to get projects configuration</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        PROJECT_CONTEXT = <span class="hljs-string">"projects"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p> URL context to get flows</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        CALL_CONTEXT = <span class="hljs-string">"flows"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>URL context to get lead fields</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        CONTACT_CONTEXT = <span class="hljs-string">"/lead/fields"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p> URL context to get system context</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        SYSTEM_CONTEXT = <span class="hljs-string">"system"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p> API version</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>		VERSION = <span class="hljs-string">"0.0.1"</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p> Create endpoint object to store instance URL</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> endpoint = <span class="hljs-string">""</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>Object to store web socket endpoint for instance</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        wsendpoint = <span class="hljs-string">""</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>Object to store REST endpoint for instance</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        restendpoint = <span class="hljs-string">""</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Object to store REST endpoint port</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        restport = <span class="hljs-number">0</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p> Object to store web socket port</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        wsport = <span class="hljs-number">0</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p> API version suggested by instance</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        apiversion = <span class="hljs-number">0</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p> Callback method interfaces to be used by API user. These methods are called on corresponding events</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        callbacks = {
+            handleAgentStatusChange : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(status, reason)</span> {</span>},
+            handleFlowStatusChange : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, projectid, status)</span> {</span>},
+            handleMuteStatusChange : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, projectid)</span> {</span>},<span class="hljs-comment">//TODO remove this and corresponding event</span>
+            handleNewFlow : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, projectid)</span> {</span>},
+            handleEndFlow : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, projectid)</span> {</span>},
+            handleReschedule : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span> <span class="hljs-keyword">return</span> {}; },
+            handleConfirmResultCode : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span> <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>; },
+            handleResultCodeSuggestion : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(resultcode, flowid)</span> {</span> <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>; },
+            handleMandatoryResultCodeSelection : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span> <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>; },
+            handleFlowDisposition : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span> <span class="hljs-keyword">return</span> {}; },
+            handleConference : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span> <span class="hljs-keyword">return</span> {}; },
+            handleTransfer : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span> <span class="hljs-keyword">return</span> {}; },
+            handleConfigurationRefresh : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> {</span>},
+            handleLogout : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> {</span>},
+            handleLogin : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> {</span>}
+        },
+        flows = [],
+        activecall = <span class="hljs-string">""</span>,
+        activechats = {},
+        projects = {},
+        agent = {
+            Status : {},
+            Name : <span class="hljs-string">""</span>,
+            Username : <span class="hljs-string">""</span>,
+            TimeZone : <span class="hljs-string">""</span>,
+            Presence : {}
+        },
+        wssocket;
+
+
+    <span class="hljs-keyword">var</span> ccclogic = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(username, password, session, settings, port, host)</span> {</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CCCLogic(username.toUpperCase(), password, session, settings, port, host);
+    };
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">CCCLogic</span><span class="hljs-params">(username, password, session, settings, port, host)</span> {</span>
+        <span class="hljs-keyword">if</span> (!port) {
+            port = <span class="hljs-number">8081</span>;
+        }
+        <span class="hljs-keyword">if</span> (!host) {
+            host = <span class="hljs-string">"localhost"</span>;
+        }
+        endpoint = <span class="hljs-string">"https://"</span> + host + <span class="hljs-string">":"</span> + port + DISCOVERY_CONTEXT;
+        $.ajaxSetup({
+            type : <span class="hljs-string">"POST"</span>,
+            dataType : <span class="hljs-string">"json"</span>,
+            contentType : <span class="hljs-string">"application/json"</span>,
+            processData : <span class="hljs-literal">false</span>,
+            async : <span class="hljs-literal">true</span>,
+            cache : <span class="hljs-literal">false</span>
+        });</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>parse settings</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        ccclogic.updateSettings(settings);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>login</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">this</span>.login(username, password, session);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>store wsendpoint, restendpoint, username, session</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        wsendpoint = <span class="hljs-string">"wss://"</span> + host + <span class="hljs-string">":"</span> + wsport;
+        restendpoint = <span class="hljs-string">"https://"</span> + host + <span class="hljs-string">":"</span> + restport + <span class="hljs-string">"/ccclogic/api/"</span> + apiversion + <span class="hljs-string">"/"</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>initialize a webworker to monitor websocket</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        createWSS();
+        refreshConfiguration();
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>PRIVATE METHODS</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createWSS</span><span class="hljs-params">()</span> {</span>
+        wssocket = WebSocket ? <span class="hljs-keyword">new</span> WebSocket( wsendpoint ) : {
+            send: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(m)</span>{</span> <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span> },
+            close: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span>}
+        };
+        $(window).unload(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span>{</span> wssocket.close(); wssocket = <span class="hljs-literal">null</span> });
+        $(wssocket)
+            .bind(<span class="hljs-string">"message"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(e)</span>{</span>
+                <span class="hljs-keyword">try</span> {
+                    <span class="hljs-keyword">var</span> m = <span class="hljs-built_in">JSON</span>.parse(e.originalEvent.data);
+                    <span class="hljs-keyword">if</span> (m.Entity === <span class="hljs-string">"Agent"</span> &amp;&amp; m.Event === <span class="hljs-string">"PresenceChanged"</span>) { 
+                        $.extend(agent.Status, {<span class="hljs-string">"Id"</span> : m.Result.Id, <span class="hljs-string">"Reason"</span> : m.Result.Reason});
+                        <span class="hljs-keyword">if</span> (callbacks.handleAgentStatusChange) 
+                            callbacks.handleAgentStatusChange(m.Result.Id, m.Result.Reason);
+                    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (m.Entity === <span class="hljs-string">"Flow"</span>) {
+                        <span class="hljs-keyword">if</span> (m.Event === <span class="hljs-string">"NewFlow"</span>) {
+                            activecall = m.Result.Id;
+                            flows.push(m.Result.Id);
+                            <span class="hljs-keyword">if</span> (callbacks.handleNewFlow)
+                                callbacks.handleNewFlow(m.Result.Id, m.Result.ProjectId);
+                        } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (m.Event === <span class="hljs-string">"FlowStatusUpdated"</span> &amp;&amp; callbacks.handleFlowStatusChange) {
+                            callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
+                        } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (m.Event === <span class="hljs-string">"FlowEnded"</span> &amp;&amp; callbacks.handleEndFlow) {
+                            <span class="hljs-keyword">if</span> (activecall === m.Result.Id) activecall = <span class="hljs-string">""</span>;
+                            flows = $.grep(flows, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(index, flow)</span>{</span>
+                                <span class="hljs-keyword">return</span> flow != m.Result.Id;
+                            });
+                            callbacks.handleEndFlow(m.Result.Id, m.Result.ProjectId);
+                        } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (m.Event === <span class="hljs-string">"CallMuteStatusUpdated"</span> &amp;&amp; callbacks.handleMuteStatusChange) {
+                            callbacks.handleMuteStatusChange(m.Result.Id, m.Result.ProjectId);
+                        }
+                    }
+                } <span class="hljs-keyword">catch</span> (error) { }
+            });
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">refreshConfiguration</span><span class="hljs-params">()</span> {</span>
+        refreshProjects(<span class="hljs-literal">false</span>);
+        refreshAgent(<span class="hljs-literal">false</span>);
+        refreshFlows(<span class="hljs-literal">false</span>);
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">refreshAgent</span><span class="hljs-params">(async)</span> {</span>
+        $.ajax({
+            url : restendpoint + AGENT_CONTEXT,
+            type : <span class="hljs-string">"GET"</span>,
+            async : async,
+            success : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                <span class="hljs-keyword">if</span> (response.Result &amp;&amp; (<span class="hljs-keyword">typeof</span> response.Result === <span class="hljs-string">"object"</span>)) {
+                    $.extend(agent, response.Result);
+                }
+            }
+        });
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">refreshProjects</span><span class="hljs-params">(async)</span> {</span>
+        $.ajax({
+            url : restendpoint + PROJECT_CONTEXT,
+            type : <span class="hljs-string">"GET"</span>,
+            async : async,
+            success : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                <span class="hljs-keyword">if</span> (response.Result) {
+                    <span class="hljs-keyword">if</span> ($.isArray(response.Result)) {
+                        projects = {};
+                        $.each(response.Result, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(index, project)</span> {</span>
+                            <span class="hljs-keyword">var</span> _p = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Object</span>();
+                            _p[project.Id] = project;
+                            $.extend(projects, _p);
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">refreshFlows</span><span class="hljs-params">(async)</span> {</span>
+        $.ajax({
+            url : restendpoint + CALL_CONTEXT,
+            type : <span class="hljs-string">"GET"</span>,
+            async : async,
+            success : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                <span class="hljs-keyword">if</span> (response.Result) {
+                    <span class="hljs-keyword">if</span> ($.isArray(response.Result)) {
+                        $.each(response.Result, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(index, flow)</span> {</span>
+                            activecall = flow.Id;
+                            flows.push(flow);
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">flowUrl</span><span class="hljs-params">(flowid)</span> {</span>
+        <span class="hljs-keyword">return</span> (flowid ? restendpoint + CALL_CONTEXT + <span class="hljs-string">"/"</span> + flowid : restendpoint + CALL_CONTEXT + <span class="hljs-string">"/active"</span>);
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>LIBRARY VARIABLES</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    ccclogic.version = VERSION;
+    ccclogic.TRANSFER_TYPES = [
+        <span class="hljs-string">"TRANSFER"</span>
+    ];
+    ccclogic.CONFERENCE_TYPES = [
+        <span class="hljs-string">"BARGEIN"</span>,
+        <span class="hljs-string">"WHISPER"</span>,
+        <span class="hljs-string">"CONFERENCE"</span>,
+        <span class="hljs-string">"WARM_TRANSFER"</span>
+    ];</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>LIBRARY METHODS</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    ccclogic.updateSettings = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(settings)</span> {</span>
+        <span class="hljs-keyword">if</span> (settings &amp;&amp; settings.callbacks) {
+            $.extend(<span class="hljs-literal">true</span>, callbacks, settings.callbacks);
+        }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <h2 id="-api-functions"> API Functions</h2>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    ccclogic.fn = CCCLogic.prototype = {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p> Login function to login to 3CLogic instance. If the
+ user is logged in, will return with current status
+ of instance for user.</p>
+<p> <strong>username</strong>: username
+ <strong>password</strong>: password
+ <strong>session</strong>: Randomly generated unique token to identify running instance</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        login : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(username, password, session)</span> {</span>
+            $.ajax({
+                url : endpoint,
+                async : <span class="hljs-literal">false</span>,
+                data : <span class="hljs-built_in">JSON</span>.stringify({
+                    <span class="hljs-string">"Command"</span> : <span class="hljs-string">"Login"</span>,
+                    <span class="hljs-string">"UserName"</span> : username,
+                    <span class="hljs-string">"Password"</span> : password,
+                    <span class="hljs-string">"Token"</span> : session,
+                    <span class="hljs-string">"Config"</span> : {
+                        <span class="hljs-string">"Cti"</span> : <span class="hljs-literal">true</span>,
+                        <span class="hljs-string">"Agent"</span> : <span class="hljs-literal">true</span>,
+                        <span class="hljs-string">"Forced"</span> : <span class="hljs-literal">true</span>,
+                        <span class="hljs-string">"Params"</span> : <span class="hljs-string">""</span>
+                    },
+                    <span class="hljs-string">"DisconnectAfter"</span> : <span class="hljs-number">30000</span>
+                }),
+                success : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                    <span class="hljs-keyword">if</span> (response &amp;&amp; response.Result) {
+                        <span class="hljs-keyword">if</span> (response.Result.UserName &amp;&amp; response.Result.UserName === username) {
+                            restport = response.Result.HttpPort;
+                            wsport = response.Result.WebSocketPort;
+                            apiversion = response.Result.ApiVersion;
+                        }
+                    }
+                }
+            });
+        },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <p> Logout function to log out of 3CLogic instance. It
+ requires the username and the session token used to
+ login to the instance.</p>
+<p> <strong>username</strong>: username
+ <strong>session</strong>: unique token provided at the time of login</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        logout : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(username, session)</span> {</span>
+            $.ajax({
+                url : endpoint,
+                async : <span class="hljs-literal">false</span>,
+                data : <span class="hljs-built_in">JSON</span>.stringify({
+                    <span class="hljs-string">"Command"</span> : <span class="hljs-string">"Logout"</span>,
+                    <span class="hljs-string">"UserName"</span> : username,
+                    <span class="hljs-string">"Token"</span> : session
+                }),
+                success : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                    <span class="hljs-keyword">if</span> (response &amp;&amp; response.Result) {
+                        <span class="hljs-keyword">if</span> (response.Result.UserName &amp;&amp; response.Result.UserName === username) {
+                            restendpoint = <span class="hljs-string">""</span>;
+                            restport = <span class="hljs-number">0</span>;
+                            wssocket.close(); wssocket = <span class="hljs-literal">null</span>;
+                            config.handleLogout();
+                        }
+                    }
+                }
+            });
+        },
+        getProjectConfiguration : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(projectId)</span> {</span>
+            <span class="hljs-keyword">if</span> (projectId &amp;&amp; projects &amp;&amp; projects[projectId]) <span class="hljs-keyword">return</span> projects[projectId];
+
+            <span class="hljs-keyword">return</span> {};
+        },
+        getProjectResultCodes : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(projectId)</span> {</span>
+            <span class="hljs-keyword">if</span> (projectId &amp;&amp; projects &amp;&amp; projects[projectId] &amp;&amp; projects[projectId].ResultCodes) <span class="hljs-keyword">return</span> projects[projectId].ResultCodes;
+
+            <span class="hljs-keyword">return</span> {};
+        },
+        getAgentConfiguration : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> {</span>
+            <span class="hljs-keyword">if</span> (agent) <span class="hljs-keyword">return</span> agent;
+
+            <span class="hljs-keyword">return</span> {};
+        },
+        getAgentStatus : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> {</span>
+            <span class="hljs-keyword">if</span> (agent) <span class="hljs-keyword">return</span> agent.Status;
+
+            <span class="hljs-keyword">return</span> {};
+        },
+        getActiveFlow : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-27">&#182;</a>
+              </div>
+              <p>TODO handle this for multiple calls</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">if</span> (activecall !== <span class="hljs-string">""</span>) <span class="hljs-keyword">return</span> flows[<span class="hljs-number">0</span>];
+            <span class="hljs-keyword">return</span> {Id : <span class="hljs-string">""</span>};
+        },
+        changeAgentStatus : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(status, reason)</span> {</span>
+            $.ajax({
+                url: restendpoint + AGENT_CONTEXT + <span class="hljs-string">"/presence"</span>,
+                data: <span class="hljs-built_in">JSON</span>.stringify({<span class="hljs-string">"Id"</span>: status, <span class="hljs-string">"Reason"</span> : reason})
+            });
+        },
+        getFlow : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, callback)</span> {</span>
+            $.get(flowUrl(flowid), <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                <span class="hljs-keyword">if</span> (response.Result) {
+                    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> response.Result === <span class="hljs-string">"object"</span>) {
+                        callback(response.Result);
+                    }
+                }
+            });
+        },
+        getContact : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, callback)</span> {</span>
+            $.get(flowUrl(flowid) + CONTACT_CONTEXT, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                <span class="hljs-keyword">if</span> (response.Result) {
+                    <span class="hljs-keyword">if</span> ($.isArray(response.Result)) {
+                        <span class="hljs-keyword">var</span> _c = {};
+                        $.each(response.Result, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(index, field)</span> {</span>
+                            <span class="hljs-keyword">var</span> _l = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Object</span>();
+                            _l[field.Name] = field.Value;
+                            $.extend(_c, _l);
+                        });
+                        <span class="hljs-keyword">var</span> contact = {<span class="hljs-string">"Id"</span> : flowid, <span class="hljs-string">"ContactFields"</span> : _c};
+                        callback(contact);
+                    }
+                }
+            });            
+        },
+        updateContact : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, contactfields, callback)</span> {</span>
+            $.ajax({
+                url: flowUrl(flowid) + CONTACT_CONTEXT,
+                data: <span class="hljs-built_in">JSON</span>.stringify(contactfields),
+                success : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> callback === <span class="hljs-string">"function"</span>) callback(<span class="hljs-string">"success"</span>, response);
+                },
+                error : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(response)</span> {</span>
+                    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> callback === <span class="hljs-string">"function"</span>) callback(<span class="hljs-string">"error"</span>, response);
+                }
+            });
+        },
+        searchAndDial : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(contactfields, dialpolicy, search)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <p>TODO</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        },
+        dial : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(uri)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
+              <p>TODO</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        },
+        pickUp : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-30">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-30">&#182;</a>
+              </div>
+              <p>TODO</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            console.log(<span class="hljs-string">"To Be Implemented"</span>);
+        },
+        disconnect : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span>
+            $.ajax({
+                url: flowUrl(flowid),
+                data: <span class="hljs-built_in">JSON</span>.stringify({<span class="hljs-string">"Command"</span> : <span class="hljs-string">"Disconnect"</span>})
+            });
+        },
+        changeMuteStatus : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, mute)</span> {</span>
+            $.ajax({
+                url: flowUrl(flowid),
+                data: <span class="hljs-built_in">JSON</span>.stringify({<span class="hljs-string">"Command"</span> : (mute?<span class="hljs-string">"UnMute"</span>:<span class="hljs-string">"Mute"</span>)})
+            });
+        },
+        changeHoldStatus : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, hold)</span> {</span>
+            $.ajax({
+                url: flowUrl(flowid),
+                data: <span class="hljs-built_in">JSON</span>.stringify({<span class="hljs-string">"Command"</span> : (hold?<span class="hljs-string">"UnHold"</span>:<span class="hljs-string">"Hold"</span>)})
+            });
+        },
+        call : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid)</span> {</span>
+            $.ajax({
+                url: flowUrl(flowid),
+                data: <span class="hljs-built_in">JSON</span>.stringify({<span class="hljs-string">"Command"</span> : <span class="hljs-string">"Call"</span>})
+            });
+        },
+        finalize : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, resultcode)</span> {</span>
+            $.ajax({
+                url : flowUrl(flowid),
+                async : <span class="hljs-literal">false</span>,
+                data : <span class="hljs-built_in">JSON</span>.stringify({
+                    <span class="hljs-string">"Command"</span>:<span class="hljs-string">"WrapUp"</span>, 
+                    <span class="hljs-string">"WrapUpParams"</span>:{
+                        <span class="hljs-string">"Result"</span>:resultcode
+                    }
+                })
+            });
+        },
+        schedule : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(flowid, background, startutc, endutc)</span> {</span>
+            <span class="hljs-keyword">var</span> scheduleTime = {};
+            <span class="hljs-keyword">if</span> (!background) {
+                scheduleTime = callbacks.handleReschedule();
+            } <span class="hljs-keyword">else</span> {
+                <span class="hljs-keyword">if</span> (!startutc) startutc = <span class="hljs-string">""</span>;
+                <span class="hljs-keyword">if</span> (!endutc) endutc = <span class="hljs-string">""</span>;
+                scheduleTime = {startutc : startutc, endutc : endutc};
+            }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-31">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-31">&#182;</a>
+              </div>
+              <p>TODO</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            console.log(<span class="hljs-string">"To Be Implemented"</span>);
+            console.log(scheduleTime);
+        },
+        transfer : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(transferTo, transferType, flowid)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-32">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-32">&#182;</a>
+              </div>
+              <p>TODO</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            console.log(<span class="hljs-string">"To Be Implemented"</span>);
+        },
+        conference : <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(conferenceWith, conferenceType, flowid)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-33">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-33">&#182;</a>
+              </div>
+              <p>TODO</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            console.log(<span class="hljs-string">"To Be Implemented"</span>);
+        }
+    };
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> module !== <span class="hljs-string">'undefined'</span> &amp;&amp; module.exports) {
+        module.exports = ccclogic;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> define === <span class="hljs-string">"function"</span> &amp;&amp; define.amd) {
+        define(<span class="hljs-string">"ccclogic"</span>, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(require, exports, module)</span> {</span>
+            <span class="hljs-keyword">return</span> ccclogic;
+        });
+    } <span class="hljs-keyword">else</span> {
+    	<span class="hljs-keyword">if</span> (!window.ccclogic) {
+    		window.ccclogic = ccclogic;
+    	}
+    }
+})(<span class="hljs-keyword">this</span>, jQuery);</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
