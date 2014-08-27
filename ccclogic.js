@@ -20,6 +20,9 @@
 
         // URL context to get lead fields
         CONTACT_CONTEXT = "/lead/fields",
+		
+		// URL context to set call fields
+        FIELDS_CONTEXT = "/fields",
 
         //  URL context to get system context
         SYSTEM_CONTEXT = "system",
@@ -32,6 +35,9 @@
 
         // Object to store web socket endpoint for instance
         wsendpoint = "",
+		
+		// Object to store discovery web socket endpoint for instance
+		wsdendpoint = "";
 
         // Object to store REST endpoint for instance
         restendpoint = "",
@@ -45,12 +51,15 @@
         //  API version suggested by instance
         apiversion = 0,
 
+		// Object to listen login/logout port
+		wsdport = 2011,
+		
         //  Session Id for instance
         session = "",
-        
+
         //  Host for discovery
         host = "localhost",
-        
+
         //  Port for discovery
         port = 8081,
 
@@ -61,9 +70,7 @@
             handleNewFlow : function(flowid, projectid) {},
             handleEndFlow : function(flowid, projectid) {},
             handleReschedule : function(flowid) { return {}; },
-            handleConfirmResultCode : function(flowid) { return true; },
-            handleResultCodeSuggestion : function(resultcode, flowid) { return true; },
-            handleMandatoryResultCodeSelection : function(flowid) { return true; },
+            handleResultCodeSuggestion : function(resultcode, flowid) {},
             handleFlowDisposition : function(flowid) { return {}; },
             handleConference : function(flowid) { return {}; },
             handleTransfer : function(flowid) { return {}; },
@@ -71,7 +78,8 @@
             handleConfigurationRefresh : function() {},
             handleLogout : function(status, result) {},
             handleLogin : function(status, result) {},
-            handleValidateSession : function(status, result) {}
+            handleValidateSession : function(status, result) {},
+			handleError : function(status, result) {}
         },
         flows = [],
         activecall = "",
@@ -86,7 +94,9 @@
             TimeZone : "",
             Presence : {}
         },
-        wssocket;
+        wssocket = {},
+		wsdsocket = {},
+        connected = false;
 
 
     var ccclogic = function (settings, credentials, port, host) {
@@ -94,16 +104,7 @@
     };
 
     function CCCLogic(settings, credentials, _port, _host) {
-    	if (settings && settings.validate && settings.callbacks) {
-    		if (localStorage.cccusername) {
-    			if (settings.callbacks.handleValidateSession && 
-    					typeof settings.callbacks.handleValidateSession === "function") {
-    				settings.callbacks.handleValidateSession("success", {});
-    				return;
-    			}
-    		}
-    	}
-        if (_port) {
+		if (_port) {
 			port = _port;
 		}
 		if (_host) {
@@ -111,17 +112,27 @@
 		}
 		endpoint = "https://" + host + ":" + port + DISCOVERY_CONTEXT;
 		
+		wsdendpoint = "wss://" + host + ":" + wsdport;
+
 		//parse settings
 		ccclogic.updateSettings(settings);
-		
-		if (credentials && credentials.username && credentials.password) {
-			this.login(credentials.username, credentials.password);
-		} else {
-			if (localStorage.cccusername && localStorage.cccsession) {
-				this.login(localStorage.cccusername, null, localStorage.cccsession);
-			} else {
-				callbacks.handleLogout("error", {});
+
+		createDiscoveryWSS();
+	
+    	if (settings && settings.validate && settings.callbacks) {
+    		if (localStorage.cccusername && localStorage.cccsession) {
+				this.login(localStorage.cccusername, null, localStorage.cccsession, false, true);
+    		} else {
+				flushLocalStorage();
+				callbacks.handleValidateSession("error", {});
 			}
+    	} else if (credentials && credentials.username && credentials.password) {
+			this.login(credentials.username, credentials.password, null, credentials.forced);
+		} else if (localStorage.cccusername && localStorage.cccsession) {
+			this.login(localStorage.cccusername, null, localStorage.cccsession);
+		} else {
+			flushLocalStorage();
+			callbacks.handleLogout("error", {});
 		}
     }
 
@@ -131,36 +142,97 @@
             send: function(m){ return false },
             close: function(){}
         };
-        $(window).unload(function(){ wssocket.close(); wssocket = null; });
+        $(window).unload(function(){
+			if(wssocket){
+				wssocket.close();
+				wssocket = null;
+			}
+		});
         $(wssocket)
+        	.bind("open", function(){
+        		var retrial = setInterval(function(){
+        			if (connected) {
+        				clearInterval(retrial);
+        			} else {
+        				if (wssocket && wssocket.readyState === 1) {
+        					wssocket.send("CTI_APPLICATION_CONNECTED");
+        				} else {
+        					clearInterval(retrial);
+        				}
+        			}
+        		}, 2000);
+        	})
             .bind("message", function(e){
                 try {
-                    var m = JSON.parse(e.originalEvent.data);
-                    if (m.Entity === "Agent" && m.Event === "PresenceChanged") {
-                        $.extend(agent.Status, {"Id" : m.Result.Id, "Reason" : m.Result.Reason});
-                        if (callbacks.handleAgentStatusChange)
-                            callbacks.handleAgentStatusChange(m.Result.Id, m.Result.Reason);
-                    } else if (m.Entity === "Flow") {
-                        if (m.Event === "NewFlow") {
-                            activecall = m.Result.Id;
-                            flows.push(m.Result.Id);
-                            if (callbacks.handleNewFlow)
-                                callbacks.handleNewFlow(m.Result.Id, m.Result.ProjectId);
-                        } else if (m.Event === "FlowStatusUpdated" && callbacks.handleFlowStatusChange) {
-                            callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
-                        } else if (m.Event === "FlowEnded" && callbacks.handleEndFlow) {
-                            if (activecall === m.Result.Id) activecall = "";
-                            flows = $.grep(flows, function(index, flow){
-                                return flow != m.Result.Id;
-                            });
-                            callbacks.handleEndFlow(m.Result.Id, m.Result.ProjectId);
-                        } else if (m.Event === "LeadInfoAvailable" && callbacks.handleContactRefreshed) {
-                            callbacks.handleContactRefreshed(m.Result.Id);
-                        }
-                    }
+                	if (e.originalEvent.data === "CTI_APPLICATION_CONNECTED") {
+                		connected = true;
+                	} else {
+	                    var m = JSON.parse(e.originalEvent.data);
+	                    if (m.Entity === "Agent" && m.Event === "PresenceChanged") {
+	                        $.extend(agent.Status, {"Id" : m.Result.Id, "Reason" : m.Result.Reason});
+	                        if (callbacks.handleAgentStatusChange)
+	                            callbacks.handleAgentStatusChange(m.Result.Id, m.Result.Reason);
+	                    } else if (m.Entity === "Flow") {
+	                        if (m.Event === "NewFlow") {
+	                            activecall = m.Result.Id;
+	                            flows.push(m.Result.Id);
+	                            if (callbacks.handleNewFlow)
+	                                callbacks.handleNewFlow(m.Result.Id, m.Result.ProjectId);
+	                        } else if (m.Event === "FlowStatusUpdated" && callbacks.handleFlowStatusChange) {
+	                            callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
+	                        } else if (m.Event === "FlowEnded" && callbacks.handleEndFlow) {
+	                            if (activecall === m.Result.Id) activecall = "";
+	                            flows = $.grep(flows, function(index, flow){
+	                                return flow != m.Result.Id;
+	                            });
+	                            callbacks.handleEndFlow(m.Result.Id, m.Result.ProjectId);
+	                        } else if (m.Event === "LeadInfoAvailable" && callbacks.handleContactRefreshed) {
+	                            callbacks.handleContactRefreshed(m.Result.Id);
+	                        } else if(m.Event === "RecordingStatusUpdated" && callbacks.handleFlowStatusChange) {
+								callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
+							} else if (m.Event === "TransferStatusUpdated" && callbacks.handleTransfer) {
+	                        	callbacks.handleTransfer(m.Result.Id, m.Result.Event);
+	                        } else if (m.Event === "ResultCodeSuggested" && callbacks.handleResultCodeSuggestion) {
+								callbacks.handleResultCodeSuggestion(m.Result.ResultCode, m.Result.Id);
+							}
+	                    } else if(m.Entity === "System") {
+							if(m.Event === "Exiting" && callbacks.handleLogout) {
+								callbacks.handleLogout("success", m.Event);
+							}
+						}
+                	}
                 } catch (error) { }
             });
     }
+	
+	function createDiscoveryWSS() {
+		wsdsocket = WebSocket ? new WebSocket( wsdendpoint ) : {
+			send: function(m){ return false },
+			close: function(){}
+		};
+		$(window).unload(function(){
+			if(wsdsocket){
+				wsdsocket.close();
+				wsdsocket = null;
+			}
+		});
+		$(wsdsocket)
+		.bind("message", function(e){
+			try {
+				var m = JSON.parse(e.originalEvent.data);
+				if (m.Entity === "Logout" && 
+						m.Result === "Exited" && 
+						m.User.toUpperCase() === localStorage.cccusername.toUpperCase() &&
+						m.SessionId === localStorage.cccsession) {
+					flushLocalStorage();
+					callbacks.handleLogout("success", {});
+				}
+			} catch (error) { }
+		})
+		.bind("error", function(e){
+			//TODO..
+		});
+	}
 
     function refreshConfiguration() {
         refreshProjects(false);
@@ -179,7 +251,7 @@
                 }
             },
 			error : function(xhr, response, e) {
-				callbacks.handleLogout("Error", response);
+				callbacks.handleError(response, e);
            }
         });
     }
@@ -205,7 +277,7 @@
                 }
             },
 			error : function(xhr, response, e) {
-				callbacks.handleLogout("Error", response);
+				callbacks.handleError(response, e);
            }
         });
     }
@@ -226,7 +298,7 @@
                 }
             },
 			error : function(xhr, response, e) {
-				callbacks.handleLogout("Error", response);
+				callbacks.handleError(response, e);
            }
         });
     }
@@ -234,6 +306,22 @@
     function flowUrl(flowid) {
         return (flowid ? restendpoint + CALL_CONTEXT + "/" + flowid : restendpoint + CALL_CONTEXT + "/active");
     }
+	
+	function flushLocalStorage() {
+		localStorage.removeItem("cccusername");
+		localStorage.removeItem("cccsession");
+		localStorage.removeItem("cccwsport");
+		localStorage.removeItem("cccrestport");
+		localStorage.removeItem("cccapiversion");
+	}
+	
+	function handleLogin(status, validate, result) {
+		if (validate) {
+			callbacks.handleValidateSession(status, result);
+		} else {
+			callbacks.handleLogin(status, result);
+		}
+	}
 
     //LIBRARY VARIABLES
     ccclogic.version = VERSION;
@@ -260,14 +348,15 @@
         //  Login function to login to 3CLogic instance. If the
         //  user is logged in, will return with current status
         //  of instance for user.
-        //  
+        //
         //  **username**: username
         //  **password**: password
         //  **session**: Randomly generated unique token to identify running instance
-        login : function(username, password, session) {
+    	//  **forced**: If true, the user will be forced login, logging out other sessions
+    	//  **validate**:If true, handleValidateSession will be called instead of handleLogin
+        login : function(username, password, session, forced, validate) {
             $.ajax({
                 url : endpoint,
-                async : false,
                 type : "POST",
                 dataType : "json",
                 contentType : "application/json",
@@ -279,15 +368,15 @@
                     "Config" : {
                         "Cti" : true,
                         "Agent" : true,
-                        "Forced" : true,
+                        "Forced" : forced,
                         "Params" : ""
                     },
-                    "DisconnectAfter" : 30000,
+                    "DisconnectAfter" : 30000
                 }),
                 success : function(response, status, xhr) {
-					if (response && response.Result && response.Result.UserName && 
-							response.Result.UserName === username.toUpperCase() &&
-							response.Result.LoginResult && 
+					if (response && response.Result && response.Result.UserName &&
+							response.Result.UserName.toUpperCase() === username.toUpperCase() &&
+							response.Result.LoginResult &&
 							response.Result.LoginResult.Status) {
 						if (response.Result.LoginResult.Status === "AppRunning") {
 							localStorage.cccusername = response.Result.UserName;
@@ -295,32 +384,40 @@
 							localStorage.cccwsport = response.Result.WebSocketPort;
 							localStorage.cccapiversion = response.Result.ApiVersion;
 							localStorage.cccsession = response.Result.LoginResult.SessionId;
-							callbacks.handleLogin("success", response.Result);
+							handleLogin("success", validate, response.Result);
 						} else if (response.Result.LoginResult.Status === "AppNotInstalled") {
-							//TODO
+							handleLogin("error", validate, "AppNotInstalled");
 						} else {
-							callbacks.handleLogin("error", {});
+							flushLocalStorage();
+							handleLogin("error", validate, {});
 						}
 					} else if(response.Error){
-   						callbacks.handleLogin("error", response.Error);
+						flushLocalStorage();
+   						handleLogin("error", validate, response.Error);
                     }
                 },
 				error : function(xhr, response, e) {
-					callbacks.handleLogin("error", xhr.responseJSON.Error);
+					if(xhr.responseJSON) {
+						if (xhr.responseJSON && 
+								xhr.responseJSON.Error && 
+								xhr.responseJSON.Error.Status === "LoginInvalidUserOrPassword") flushLocalStorage();
+						handleLogin("error", validate, xhr.responseJSON.Error);
+					} else {
+						handleLogin("error", validate, "NetworkError");
+					}
 				}
             });
         },
         //  Logout function to log out of 3CLogic instance. It
         //  requires the username, forced, and the session token used to
         //  login to the instance.
-        //  
+        //
         //  **username**: username
         //  **session**: unique token provided at the time of login
 		//  **forced**: logout forcefully.
         logout : function(forced) {
             $.ajax({
                 url : restendpoint + SYSTEM_CONTEXT,
-                async : false,
                 data : JSON.stringify({
 				  "Command": "Exit",
 				  "ExitParams": {
@@ -331,28 +428,27 @@
 				  }
                 }),
                 success : function(response, status, xhr) {
-                    if (response && response.Result && 
-                    		response.Result.UserName) {
+                    if (response && response.Result) {
                     	restendpoint = "";
                         restport = 0;
                         wssocket.close(); wssocket = null;
-                        localStorage.removeItem("cccusername");
-                        localStorage.removeItem("cccsession");
-                        localStorage.removeItem("cccwsport");
-                        localStorage.removeItem("cccrestport");
-                        localStorage.removeItem("cccapiversion");
+						wsdsocket.close(); wsdsocket = null;
+                        flushLocalStorage();
                         callbacks.handleLogout("success", response.Result);
                     } else if(response && response.Error){
 						if(response.Error.Status === 'FinalizationPending') {
 							callbacks.handleLogout("error", response.Error);
 						} else {
+							flushLocalStorage();
 							callbacks.handleLogout("error", response);
 						}
                     } else {
+						flushLocalStorage();
                     	callbacks.handleLogout("error", {});
                     }
                 },
 				error : function(xhr, response, e) {
+					flushLocalStorage();
 					callbacks.handleLogout("error", response);
 				}
             });
@@ -431,7 +527,7 @@
                         callback(contact);
                     }
                 }
-            });            
+            });
         },
         updateContact : function(flowid, contactfields, callback) {
             $.ajax({
@@ -469,6 +565,33 @@
                 }
             });
         },
+        allocateAndDial : function(contactfields, dialpolicy, searchfields, allocationpolicy, callback) {
+            $.ajax({
+                url: restendpoint + PROJECT_CONTEXT + "/" + dialpolicy.ProjectId + "/calls",
+                data: JSON.stringify({
+                    "Command": "AllocateLeadAndPlaceCall",
+                    "LeadRequest": {
+                        "DialingDetails":[{
+                            "Key": "dialphone",
+                            "Value": dialpolicy.DialPhone
+                        }],
+                        "Fields": contactfields,
+                        "SearchableFields": searchfields,
+                        "Timeout": dialpolicy.Timeout,
+                        "LeadAddActionType" : allocationpolicy.Action,
+                        "IsForceAllocation" : allocationpolicy.Force,
+                        "Callable" : allocationpolicy.Callable,
+                        "UpdateLeadIfFound": true
+                    }
+                }),
+                success : function(response, status, xhr) {
+                    if (typeof callback === "function") callback("success", response);
+                },
+                error : function(xhr, response, e) {
+                    if (typeof callback === "function") callback("error", response);
+                }
+            });
+        },
         dial : function(uri) {
             //TODO
         },
@@ -488,6 +611,21 @@
                 data: JSON.stringify({"Command" : (mute?"UnMute":"Mute")})
             });
         },
+		changeRecordingStatus : function(flowid, pause) {
+			$.ajax({
+				 url: flowUrl(flowid),
+                data: JSON.stringify({"Command" : (pause ? "PauseRecording" : "StartRecording")}),
+				success : function(response, status, xhr) {
+					if (typeof callback === "function") callback("success", response);
+				},
+				error : function(xhr, response, e) {
+					if (typeof callback === "function") callback("error", response);
+				}
+			});
+			// some dilemma about these recording status,
+			// here implemented only two [startRecording, stopRecording/pauseRecourding]
+			//"Command": "StartRecording/PauseRecording/ResumeRecording/StopRecording"
+		},
         changeHoldStatus : function(flowid, hold) {
             $.ajax({
                 url: flowUrl(flowid),
@@ -507,11 +645,23 @@
                 data : JSON.stringify({
                     "Command":"WrapUp",
                     "WrapUpParams":{
-                        "Result":resultcode
+                        "Result" : resultcode
                     }
                 })
             });
         },
+		updateCall : function(flowid, fields, callback) {
+			$.ajax({
+				url: flowUrl(flowid) + FIELDS_CONTEXT,
+				data: JSON.stringify(fields),
+				success : function(response, status, xhr) {
+					if (typeof callback === "function") callback("success", response);
+				},
+				error : function(xhr, response, e) {
+					if (typeof callback === "function") callback("error", response);
+				}
+			});
+		},
         schedule : function(flowid, timezone, selfassigned, startdatetime, enddatetime, callback) {
             $.ajax({
                 url : flowUrl(flowid),
@@ -564,7 +714,7 @@
 				apiversion = localStorage.cccapiversion;
 				session = localStorage.cccsession;
 				username = localStorage.cccusername;
-				
+
 				$.ajaxSetup({
 					type : "POST",
 					dataType : "json",
@@ -576,15 +726,16 @@
 						"X-CCC-Session" : session
 					}
 				});
-	
+
 				//store wsendpoint, restendpoint, username, session
 				wsendpoint = "wss://" + host + ":" + wsport;
 				restendpoint = "https://" + host + ":" + restport + "/ccclogic/api/" + apiversion + "/";
-				
+
 				//initialize a webworker to monitor websocket
 				createWSS();
 				refreshConfiguration();
 			} else {
+				flushLocalStorage();
 				callbacks.handleLogout("error", {});
 			}
 		},
@@ -594,6 +745,15 @@
                 async : false,
                 type : "GET"
 			});
+		},
+		credentials : function(){
+			if (localStorage.cccusername) {
+				return {
+					session : localStorage.cccsession,
+					username : localStorage.cccusername
+				};
+			}
+			return {};
 		}
 	};
 
