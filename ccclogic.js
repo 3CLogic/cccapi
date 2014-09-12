@@ -8,6 +8,8 @@
 
     //  Discovery URL context to search the running instances
     var DISCOVERY_CONTEXT = "/ccclogic/api/discovery/instances",
+	
+		DISCOVERY_SYSTEM_CONTEXT="/ccclogic/api/discovery/system",
 
         //  URL context to get agent configuration
         AGENT_CONTEXT = "agent",
@@ -79,7 +81,9 @@
             handleLogout : function(status, result) {},
             handleLogin : function(status, result) {},
             handleValidateSession : function(status, result) {},
-			handleError : function(status, result) {}
+			handleError : function(status, result) {},
+			handleCrash : function(status,result){},
+			handleTimerStatusUpdated : function(flowid){}
         },
         flows = [],
         activecall = "",
@@ -110,7 +114,7 @@
 		if (_host) {
 			host = _host;
 		}
-		endpoint = "https://" + host + ":" + port + DISCOVERY_CONTEXT;
+		endpoint = "https://" + host + ":" + port;
 		
 		wsdendpoint = "wss://" + host + ":" + wsdport;
 
@@ -137,7 +141,7 @@
     }
 
     //PRIVATE METHODS
-    function createWSS() {
+    function createWSS(callback) {
         wssocket = WebSocket ? new WebSocket( wsendpoint ) : {
             send: function(m){ return false },
             close: function(){}
@@ -166,40 +170,46 @@
                 try {
                 	if (e.originalEvent.data === "CTI_APPLICATION_CONNECTED") {
                 		connected = true;
+                		if (typeof callback === "function") callback();
                 	} else {
-	                    var m = JSON.parse(e.originalEvent.data);
-	                    if (m.Entity === "Agent" && m.Event === "PresenceChanged") {
-	                        $.extend(agent.Status, {"Id" : m.Result.Id, "Reason" : m.Result.Reason});
-	                        if (callbacks.handleAgentStatusChange)
-	                            callbacks.handleAgentStatusChange(m.Result.Id, m.Result.Reason);
-	                    } else if (m.Entity === "Flow") {
-	                        if (m.Event === "NewFlow") {
-	                            activecall = m.Result.Id;
-	                            flows.push(m.Result.Id);
-	                            if (callbacks.handleNewFlow)
-	                                callbacks.handleNewFlow(m.Result.Id, m.Result.ProjectId);
-	                        } else if (m.Event === "FlowStatusUpdated" && callbacks.handleFlowStatusChange) {
-	                            callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
-	                        } else if (m.Event === "FlowEnded" && callbacks.handleEndFlow) {
-	                            if (activecall === m.Result.Id) activecall = "";
-	                            flows = $.grep(flows, function(index, flow){
-	                                return flow != m.Result.Id;
-	                            });
-	                            callbacks.handleEndFlow(m.Result.Id, m.Result.ProjectId);
-	                        } else if (m.Event === "LeadInfoAvailable" && callbacks.handleContactRefreshed) {
-	                            callbacks.handleContactRefreshed(m.Result.Id);
-	                        } else if(m.Event === "RecordingStatusUpdated" && callbacks.handleFlowStatusChange) {
-								callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
-							} else if (m.Event === "TransferStatusUpdated" && callbacks.handleTransfer) {
-	                        	callbacks.handleTransfer(m.Result.Id, m.Result.Event);
-	                        } else if (m.Event === "ResultCodeSuggested" && callbacks.handleResultCodeSuggestion) {
-								callbacks.handleResultCodeSuggestion(m.Result.ResultCode, m.Result.Id);
+                		var m = JSON.parse(e.originalEvent.data);
+	                    if (m.Sequence && m.Sequence > localStorage.cccsequence) {
+	                    	localStorage.cccsequence = m.Sequence;
+		                    if (m.Entity === "Agent" && m.Event === "PresenceChanged") {
+		                        $.extend(agent.Status, {"Id" : m.Result.Id, "Reason" : m.Result.Reason});
+		                        if (callbacks.handleAgentStatusChange)
+		                            callbacks.handleAgentStatusChange(m.Result.Id, m.Result.Reason);
+		                    } else if (m.Entity === "Flow") {
+		                        if (m.Event === "NewFlow") {
+		                            activecall = m.Result.Id;
+		                            flows.push(m.Result.Id);
+		                            if (callbacks.handleNewFlow)
+		                                callbacks.handleNewFlow(m.Result.Id, m.Result.ProjectId);
+		                        } else if (m.Event === "FlowStatusUpdated" && callbacks.handleFlowStatusChange) {
+		                            callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
+		                        } else if (m.Event === "FlowEnded" && callbacks.handleEndFlow) {
+		                            if (activecall === m.Result.Id) activecall = "";
+		                            flows = $.grep(flows, function(index, flow){
+		                                return flow != m.Result.Id;
+		                            });
+		                            callbacks.handleEndFlow(m.Result.Id, m.Result.ProjectId);
+		                        } else if (m.Event === "LeadInfoAvailable" && callbacks.handleContactRefreshed) {
+		                            callbacks.handleContactRefreshed(m.Result.Id);
+		                        } else if(m.Event === "RecordingStatusUpdated" && callbacks.handleFlowStatusChange) {
+									callbacks.handleFlowStatusChange(m.Result.Id, m.Result.ProjectId, m.Result.Status);
+								} else if (m.Event === "TransferStatusUpdated" && callbacks.handleTransfer) {
+		                        	callbacks.handleTransfer(m.Result.Id, m.Result.Event);
+		                        } else if (m.Event === "ResultCodeSuggested" && callbacks.handleResultCodeSuggestion) {
+									callbacks.handleResultCodeSuggestion(m.Result.ResultCode, m.Result.Id);
+								} else if ((m.Event === "TimerStarted" || m.Event === "TimerExpired") && callbacks.handleTimerStarted) {
+									callbacks.handleTimerUpdated(m.Result.Id);
+								}
+		                    } else if(m.Entity === "System") {
+								if(m.Event === "Exiting" && callbacks.handleLogout) {
+									callbacks.handleLogout("success", m.Event);
+								}
 							}
-	                    } else if(m.Entity === "System") {
-							if(m.Event === "Exiting" && callbacks.handleLogout) {
-								callbacks.handleLogout("success", m.Event);
-							}
-						}
+	                	}
                 	}
                 } catch (error) { }
             });
@@ -226,6 +236,17 @@
 						m.SessionId === localStorage.cccsession) {
 					flushLocalStorage();
 					callbacks.handleLogout("success", {});
+				} else if (m.Entity === "Crash"  &&
+							m.Event === "Notification"  &&
+						    m.User.toUpperCase() === localStorage.cccusername.toUpperCase() &&
+							m.SessionId === localStorage.cccsession &&
+							callbacks.handleCrash){
+					callbacks.handleCrash("success", m.Event, m.ClientVersion);
+				} else if (m.Entity === "Logout" && 
+						m.Result === "AppExiting" && 
+						m.User.toUpperCase() === localStorage.cccusername.toUpperCase() &&
+						m.SessionId === localStorage.cccsession) {
+					callbacks.handleLogout("success", "Exiting");
 				}
 			} catch (error) { }
 		})
@@ -233,18 +254,11 @@
 			//TODO..
 		});
 	}
-
-    function refreshConfiguration() {
-        refreshProjects(false);
-        refreshAgent(false);
-        refreshFlows(false);
-    }
-
-    function refreshAgent(async) {
-        $.ajax({
+	
+    function refreshAgent() {
+        return $.ajax({
             url : restendpoint + AGENT_CONTEXT,
             type : "GET",
-            async : async,
             success : function(response, status, xhr) {
                 if (response.Result && (typeof response.Result === "object")) {
                     $.extend(agent, response.Result);
@@ -256,11 +270,10 @@
         });
     }
 
-    function refreshProjects(async) {
-        $.ajax({
+    function refreshProjects() {
+        return $.ajax({
             url : restendpoint + PROJECT_CONTEXT,
             type : "GET",
-            async : async,
             success : function(response, status, xhr) {
                 if (response.Result) {
                     if ($.isArray(response.Result)) {
@@ -282,13 +295,13 @@
         });
     }
 
-    function refreshFlows(async) {
-        $.ajax({
+    function refreshFlows() {
+        return $.ajax({
             url : restendpoint + CALL_CONTEXT,
             type : "GET",
-            async : async,
             success : function(response, status, xhr) {
                 if (response.Result) {
+                	if (response.Sequence) localStorage.cccsequence = response.Sequence;
                     if ($.isArray(response.Result)) {
                         $.each(response.Result, function(index, flow) {
                             activecall = flow.Id;
@@ -313,6 +326,7 @@
 		localStorage.removeItem("cccwsport");
 		localStorage.removeItem("cccrestport");
 		localStorage.removeItem("cccapiversion");
+		localStorage.removeItem("cccsequence");
 	}
 	
 	function handleLogin(status, validate, result) {
@@ -356,7 +370,7 @@
     	//  **validate**:If true, handleValidateSession will be called instead of handleLogin
         login : function(username, password, session, forced, validate) {
             $.ajax({
-                url : endpoint,
+                url : endpoint + DISCOVERY_CONTEXT,
                 type : "POST",
                 dataType : "json",
                 contentType : "application/json",
@@ -384,6 +398,7 @@
 							localStorage.cccwsport = response.Result.WebSocketPort;
 							localStorage.cccapiversion = response.Result.ApiVersion;
 							localStorage.cccsession = response.Result.LoginResult.SessionId;
+							localStorage.cccsequence = 0;
 							handleLogin("success", validate, response.Result);
 						} else if (response.Result.LoginResult.Status === "AppNotInstalled") {
 							handleLogin("error", validate, "AppNotInstalled");
@@ -400,8 +415,10 @@
 					if(xhr.responseJSON) {
 						if (xhr.responseJSON && 
 								xhr.responseJSON.Error && 
-								xhr.responseJSON.Error.Status === "LoginInvalidUserOrPassword") flushLocalStorage();
-						handleLogin("error", validate, xhr.responseJSON.Error);
+								(xhr.responseJSON.Error.Status === "LoginInvalidUserOrPassword" ||
+									xhr.responseJSON.Error.Status === "AppExiting")) 
+							flushLocalStorage();
+							handleLogin("error", validate, xhr.responseJSON.Error);
 					} else {
 						handleLogin("error", validate, "NetworkError");
 					}
@@ -471,6 +488,9 @@
         getDefaultProject : function() {
             return defaultprojectid;
         },
+        isChannelConnected : function() {
+        	return connected;
+        },
         getProjectResultCodes : function(projectId) {
             if (projectId && projects && projects[projectId] && projects[projectId].ResultCodes) return projects[projectId].ResultCodes;
 
@@ -496,6 +516,7 @@
                 url: restendpoint + AGENT_CONTEXT + "/presence",
                 data: JSON.stringify({"Id": status, "Reason" : reason}),
                 success : function(response, status, xhr) {
+                	if (response.Sequence) localStorage.cccsequence = response.Sequence;
                     if (typeof callback === "function") callback("success", response);
                 },
                 error : function(xhr, response, e) {
@@ -506,6 +527,7 @@
         getFlow : function(flowid, callback) {
             $.get(flowUrl(flowid), function(response) {
                 if (response.Result) {
+                	if (response.Sequence) localStorage.cccsequence = response.Sequence;
                     if (typeof response.Result === "object" &&
                         (typeof callback === "function")) {
                         callback(response.Result);
@@ -516,6 +538,7 @@
         getContact : function(flowid, callback) {
             $.get(flowUrl(flowid) + CONTACT_CONTEXT, function(response) {
                 if (response.Result) {
+                	if (response.Sequence) localStorage.cccsequence = response.Sequence;
                     if ($.isArray(response.Result)) {
                         var _c = {};
                         $.each(response.Result, function(index, field) {
@@ -638,7 +661,7 @@
                 data: JSON.stringify({"Command" : "Call"})
             });
         },
-        finalize : function(flowid, resultcode) {
+        finalize : function(flowid, resultcode, callback) {
             $.ajax({
                 url : flowUrl(flowid),
                 async : false,
@@ -647,7 +670,13 @@
                     "WrapUpParams":{
                         "Result" : resultcode
                     }
-                })
+                }),
+                success : function(response, status, xhr) {
+					if (typeof callback === "function") callback("success", response);
+				},
+				error : function(xhr, response, e) {
+					if (typeof callback === "function") callback("error", response);
+				}
             });
         },
 		updateCall : function(flowid, fields, callback) {
@@ -703,11 +732,11 @@
                 url : flowUrl(flowid),
                 data : JSON.stringify({
                     "Command" : "Dtmf",
-                    "PhoneNumber" : number
+                    "Uri" : number
                 })
             });
         },
-		init : function() {
+		init : function(callback) {
 			if (localStorage && localStorage.cccusername) {
 				restport = localStorage.cccrestport;
 				wsport = localStorage.cccwsport;
@@ -732,8 +761,14 @@
 				restendpoint = "https://" + host + ":" + restport + "/ccclogic/api/" + apiversion + "/";
 
 				//initialize a webworker to monitor websocket
-				createWSS();
-				refreshConfiguration();
+				createWSS(function(){
+					$.when(
+					refreshProjects(),
+			        refreshAgent(),
+			        refreshFlows()).done(function(){
+			        	if (typeof callback === "function") callback();
+			        });
+				});
 			} else {
 				flushLocalStorage();
 				callbacks.handleLogout("error", {});
@@ -754,6 +789,16 @@
 				};
 			}
 			return {};
+		},	
+		reportError : function(message, clientversion){
+		$.ajax({
+                url : endpoint + DISCOVERY_SYSTEM_CONTEXT,
+                data : JSON.stringify({
+				"Message": message,
+                "UserName" : username,
+				"ClientVersion" : clientversion
+                })
+            });
 		}
 	};
 
